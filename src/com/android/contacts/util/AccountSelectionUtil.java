@@ -16,18 +16,12 @@
 
 package com.android.contacts.util;
 
-import com.android.contacts.ImportVCardActivity;
-import com.android.contacts.R;
-import com.android.contacts.model.ContactsSource;
-import com.android.contacts.model.GoogleSource;
-import com.android.contacts.model.Sources;
-
-import android.accounts.Account;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.Uri;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -35,7 +29,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
-import android.net.Uri;
+
+import com.android.contacts.R;
+import com.android.contacts.model.AccountTypeManager;
+import com.android.contacts.model.account.AccountType;
+import com.android.contacts.model.account.AccountWithDataSet;
 
 import java.util.List;
 
@@ -56,9 +54,10 @@ public class AccountSelectionUtil {
         final private Context mContext;
         final private int mResId;
 
-        final protected List<Account> mAccountList;
+        final protected List<AccountWithDataSet> mAccountList;
 
-        public AccountSelectedListener(Context context, List<Account> accountList, int resId) {
+        public AccountSelectedListener(Context context, List<AccountWithDataSet> accountList,
+                int resId) {
             if (accountList == null || accountList.size() == 0) {
                 Log.e(LOG_TAG, "The size of Account list is 0.");
             }
@@ -89,8 +88,10 @@ public class AccountSelectionUtil {
     public static Dialog getSelectAccountDialog(Context context, int resId,
             DialogInterface.OnClickListener onClickListener,
             DialogInterface.OnCancelListener onCancelListener) {
-        final Sources sources = Sources.getInstance(context);
-        final List<Account> writableAccountList = sources.getAccounts(true);
+        final AccountTypeManager accountTypes = AccountTypeManager.getInstance(context);
+        final List<AccountWithDataSet> writableAccountList = accountTypes.getAccounts(true);
+
+        Log.i(LOG_TAG, "The number of available accounts: " + writableAccountList.size());
 
         // Assume accountList.size() > 1
 
@@ -99,8 +100,8 @@ public class AccountSelectionUtil {
                 context, android.R.style.Theme_Light);
         final LayoutInflater dialogInflater = (LayoutInflater)dialogContext
                 .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        final ArrayAdapter<Account> accountAdapter =
-            new ArrayAdapter<Account>(context, android.R.layout.simple_list_item_2,
+        final ArrayAdapter<AccountWithDataSet> accountAdapter =
+            new ArrayAdapter<AccountWithDataSet>(context, android.R.layout.simple_list_item_2,
                     writableAccountList) {
 
             @Override
@@ -117,14 +118,13 @@ public class AccountSelectionUtil {
                 final TextView text2 =
                         (TextView)convertView.findViewById(android.R.id.text2);
 
-                final Account account = this.getItem(position);
-                final ContactsSource source =
-                    sources.getInflatedSource(account.type,
-                            ContactsSource.LEVEL_SUMMARY);
+                final AccountWithDataSet account = this.getItem(position);
+                final AccountType accountType = accountTypes.getAccountType(
+                        account.type, account.dataSet);
                 final Context context = getContext();
 
                 text1.setText(account.name);
-                text2.setText(source.getDisplayLabel(context));
+                text2.setText(accountType.getDisplayLabel(context));
 
                 return convertView;
             }
@@ -149,7 +149,7 @@ public class AccountSelectionUtil {
             .create();
     }
 
-    public static void doImport(Context context, int resId, Account account) {
+    public static void doImport(Context context, int resId, AccountWithDataSet account) {
         switch (resId) {
             case R.string.import_from_sim: {
                 doImportFromSim(context, account);
@@ -162,30 +162,25 @@ public class AccountSelectionUtil {
         }
     }
 
-    public static void doImportFromSim(Context context, Account account) {
-        if (account != null) {
-            GoogleSource.createMyContactsIfNotExist(account, context);
-        }
-
+    public static void doImportFromSim(Context context, AccountWithDataSet account) {
         Intent importIntent = new Intent(Intent.ACTION_VIEW);
         importIntent.setType("vnd.android.cursor.item/sim-contact");
         if (account != null) {
             importIntent.putExtra("account_name", account.name);
             importIntent.putExtra("account_type", account.type);
+            importIntent.putExtra("data_set", account.dataSet);
         }
         importIntent.setClassName("com.android.phone", "com.android.phone.SimContacts");
         context.startActivity(importIntent);
     }
 
-    public static void doImportFromSdCard(Context context, Account account) {
-        if (account != null) {
-            GoogleSource.createMyContactsIfNotExist(account, context);
-        }
-
-        Intent importIntent = new Intent(context, ImportVCardActivity.class);
+    public static void doImportFromSdCard(Context context, AccountWithDataSet account) {
+        Intent importIntent = new Intent(context,
+                com.android.contacts.vcard.ImportVCardActivity.class);
         if (account != null) {
             importIntent.putExtra("account_name", account.name);
             importIntent.putExtra("account_type", account.type);
+            importIntent.putExtra("data_set", account.dataSet);
         }
 
         if (mVCardShare) {

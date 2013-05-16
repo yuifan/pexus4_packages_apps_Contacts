@@ -16,9 +16,8 @@
 
 package com.android.contacts;
 
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Class used for collapsing data items into groups of similar items. The data items that should be
@@ -44,12 +43,12 @@ public final class Collapser {
 
     /**
      * Collapses a list of Collapsible items into a list of collapsed items. Items are collapsed
-     * if {@link Collapsible#shouldCollapseWith(Object) return strue, and are collapsed
+     * if {@link Collapsible#shouldCollapseWith(Object)} returns true, and are collapsed
      * through the {@Link Collapsible#collapseWith(Object)} function implemented by the data item.
      *
-     * @param list ArrayList of Objects of type <T extends Collapsible<T>> to be collapsed.
+     * @param list List of Objects of type <T extends Collapsible<T>> to be collapsed.
      */
-    public static <T extends Collapsible<T>> void collapseList(ArrayList<T> list) {
+    public static <T extends Collapsible<T>> void collapseList(List<T> list) {
 
         int listSize = list.size();
 

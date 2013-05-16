@@ -16,20 +16,8 @@
 
 package com.android.contacts.util;
 
-import android.app.Service;
-import android.provider.ContactsContract.CommonDataKinds.Phone;
-
-/**
- * Background {@link Service} that is used to keep our process alive long enough
- * for background threads to finish. Started and stopped directly by specific
- * background tasks when needed.
- */
 public class Constants {
-    /**
-     * Specific MIME-type for {@link Phone#CONTENT_ITEM_TYPE} entries that
-     * distinguishes actions that should initiate a text message.
-     */
-    public static final String MIME_SMS_ADDRESS = "vnd.android.cursor.item/sms-address";
+    public static final String MIME_TYPE_VIDEO_CHAT = "vnd.android.cursor.item/video-chat-address";
 
     public static final String SCHEME_TEL = "tel";
     public static final String SCHEME_SMSTO = "smsto";
@@ -37,4 +25,15 @@ public class Constants {
     public static final String SCHEME_IMTO = "imto";
     public static final String SCHEME_SIP = "sip";
 
+    /**
+     * Log tag for performance measurement.
+     * To enable: adb shell setprop log.tag.ContactsPerf VERBOSE
+     */
+    public static final String PERFORMANCE_TAG = "ContactsPerf";
+
+    /**
+     * Log tag for enabling/disabling StrictMode violation log.
+     * To enable: adb shell setprop log.tag.ContactsStrictMode DEBUG
+     */
+    public static final String STRICT_MODE_TAG = "ContactsStrictMode";
 }

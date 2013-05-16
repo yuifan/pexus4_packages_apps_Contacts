@@ -16,9 +16,6 @@
 
 package com.android.contacts;
 
-import com.android.contacts.model.EntityModifier;
-import com.android.contacts.util.Constants;
-
 import android.accounts.Account;
 import android.provider.ContactsContract.CommonDataKinds.Email;
 import android.provider.ContactsContract.CommonDataKinds.Im;
@@ -26,11 +23,14 @@ import android.provider.ContactsContract.CommonDataKinds.Organization;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
 
+import com.android.contacts.model.RawContactModifier;
+import com.android.contacts.util.Constants;
+
 /**
  * This class contains utility functions for determining the precedence of
  * different types associated with contact data items.
  *
- * @deprecated use {@link EntityModifier#getTypePrecedence} instead, since this
+ * @deprecated use {@link RawContactModifier#getTypePrecedence} instead, since this
  *             list isn't {@link Account} based.
  */
 @Deprecated
@@ -42,6 +42,7 @@ public final class TypePrecedence {
     //TODO These may need to be tweaked.
     private static final int[] TYPE_PRECEDENCE_PHONES = {
             Phone.TYPE_CUSTOM,
+            Phone.TYPE_MAIN,
             Phone.TYPE_MOBILE,
             Phone.TYPE_HOME,
             Phone.TYPE_WORK,
@@ -99,13 +100,13 @@ public final class TypePrecedence {
     private static int[] getTypePrecedenceList(String mimetype) {
         if (mimetype.equals(Phone.CONTENT_ITEM_TYPE)) {
             return TYPE_PRECEDENCE_PHONES;
-        } else if (mimetype.equals(Constants.MIME_SMS_ADDRESS)) {
-            return TYPE_PRECEDENCE_PHONES;
         } else if (mimetype.equals(Email.CONTENT_ITEM_TYPE)) {
             return TYPE_PRECEDENCE_EMAIL;
         } else if (mimetype.equals(StructuredPostal.CONTENT_ITEM_TYPE)) {
             return TYPE_PRECEDENCE_POSTAL;
         } else if (mimetype.equals(Im.CONTENT_ITEM_TYPE)) {
+            return TYPE_PRECEDENCE_IM;
+        } else if (mimetype.equals(Constants.MIME_TYPE_VIDEO_CHAT)) {
             return TYPE_PRECEDENCE_IM;
         } else if (mimetype.equals(Organization.CONTENT_ITEM_TYPE)) {
             return TYPE_PRECEDENCE_ORG;

@@ -24,6 +24,8 @@ import android.provider.ContactsContract.Data;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
 
+import com.android.contacts.R;
+
 /**
  * Storage for a social status update. Holds a single update, but can use
  * {@link #possibleUpdate(Cursor)} to consider updating when a better status
@@ -92,6 +94,10 @@ public class DataStatus {
         return mStatus;
     }
 
+    public long getTimestamp() {
+        return mTimestamp;
+    }
+
     /**
      * Build any timestamp and label into a single string.
      */
@@ -112,11 +118,11 @@ public class DataStatus {
 
         if (validTimestamp && validLabel) {
             return context.getString(
-                    com.android.internal.R.string.contact_status_update_attribution_with_date,
+                    R.string.contact_status_update_attribution_with_date,
                     timeClause, labelClause);
         } else if (validLabel) {
             return context.getString(
-                    com.android.internal.R.string.contact_status_update_attribution,
+                    R.string.contact_status_update_attribution,
                     labelClause);
         } else if (validTimestamp) {
             return timeClause;

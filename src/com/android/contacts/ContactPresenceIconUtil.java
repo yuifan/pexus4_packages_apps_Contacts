@@ -26,7 +26,7 @@ import android.provider.ContactsContract.StatusUpdates;
 public class ContactPresenceIconUtil {
     /**
      * Get the presence icon resource according the status.
-     * 
+     *
      * @return null means don't show the status icon.
      */
     public static Drawable getPresenceIcon (Context context, int status) {

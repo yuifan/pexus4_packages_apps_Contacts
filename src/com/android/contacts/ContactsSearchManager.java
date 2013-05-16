@@ -22,6 +22,8 @@ import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.Intents.UI;
 
+import com.android.contacts.list.ContactsRequest;
+
 /**
  * A convenience class that helps launch contact search from within the app.
  */
@@ -31,27 +33,28 @@ public class ContactsSearchManager {
      * An extra that provides context for search UI and defines the scope for
      * the search queries.
      */
-    public static final String ORIGINAL_ACTION_EXTRA_KEY = "originalAction";
-
-    /**
-     * An extra that provides context for search UI and defines the scope for
-     * the search queries.
-     */
-    public static final String ORIGINAL_COMPONENT_EXTRA_KEY = "originalComponent";
+    public static final String ORIGINAL_REQUEST_KEY = "originalRequest";
 
     /**
      * Starts the contact list activity in the search mode.
      */
     public static void startSearch(Activity context, String initialQuery) {
-        context.startActivity(buildIntent(context, initialQuery));
+        context.startActivity(buildIntent(context, initialQuery, null));
     }
 
     public static void startSearchForResult(Activity context, String initialQuery,
-            int requestCode) {
-        context.startActivityForResult(buildIntent(context, initialQuery), requestCode);
+            int requestCode, ContactsRequest originalRequest) {
+        context.startActivityForResult(
+                buildIntent(context, initialQuery, originalRequest), requestCode);
     }
 
-    private static Intent buildIntent(Activity context, String initialQuery) {
+    public static void startSearch(Activity context, String initialQuery,
+            ContactsRequest originalRequest) {
+        context.startActivity(buildIntent(context, initialQuery, originalRequest));
+    }
+
+    private static Intent buildIntent(
+            Activity context, String initialQuery, ContactsRequest originalRequest) {
         Intent intent = new Intent();
         intent.setData(ContactsContract.Contacts.CONTENT_URI);
         intent.setAction(UI.FILTER_CONTACTS_ACTION);
@@ -62,8 +65,9 @@ public class ContactsSearchManager {
             intent.putExtras(originalExtras);
         }
         intent.putExtra(UI.FILTER_TEXT_EXTRA_KEY, initialQuery);
-        intent.putExtra(ORIGINAL_ACTION_EXTRA_KEY, originalIntent.getAction());
-        intent.putExtra(ORIGINAL_COMPONENT_EXTRA_KEY, originalIntent.getComponent().getClassName());
+        if (originalRequest != null) {
+            intent.putExtra(ORIGINAL_REQUEST_KEY, originalRequest);
+        }
         return intent;
     }
 }

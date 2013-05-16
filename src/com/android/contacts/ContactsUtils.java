@@ -16,180 +16,37 @@
 
 package com.android.contacts;
 
-
-import com.android.contacts.model.ContactsSource;
-import com.android.contacts.util.Constants;
-
-import android.content.ContentResolver;
-import android.content.ContentUris;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
+import android.graphics.Rect;
+import android.location.CountryDetector;
 import android.net.Uri;
-import android.provider.ContactsContract.Contacts;
-import android.provider.ContactsContract.Data;
-import android.provider.ContactsContract.RawContacts;
-import android.provider.ContactsContract.CommonDataKinds.Email;
+import android.provider.ContactsContract;
 import android.provider.ContactsContract.CommonDataKinds.Im;
-import android.provider.ContactsContract.CommonDataKinds.Organization;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
-import android.provider.ContactsContract.CommonDataKinds.Photo;
-import android.provider.ContactsContract.CommonDataKinds.StructuredPostal;
+import android.provider.ContactsContract.DisplayPhoto;
+import android.provider.ContactsContract.QuickContact;
 import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.ArrayList;
+import com.android.contacts.activities.DialtactsActivity;
+import com.android.contacts.model.AccountTypeManager;
+import com.android.contacts.model.account.AccountType;
+import com.android.contacts.model.account.AccountWithDataSet;
+import com.android.contacts.test.NeededForTesting;
+import com.android.contacts.util.Constants;
+
+import java.util.List;
 
 public class ContactsUtils {
     private static final String TAG = "ContactsUtils";
     private static final String WAIT_SYMBOL_AS_STRING = String.valueOf(PhoneNumberUtils.WAIT);
-    /**
-     * Build the display title for the {@link Data#CONTENT_URI} entry in the
-     * provided cursor, assuming the given mimeType.
-     */
-    public static final CharSequence getDisplayLabel(Context context,
-            String mimeType, Cursor cursor) {
-        // Try finding the type and label for this mimetype
-        int colType;
-        int colLabel;
 
-        if (Phone.CONTENT_ITEM_TYPE.equals(mimeType)
-                || Constants.MIME_SMS_ADDRESS.equals(mimeType)) {
-            // Reset to phone mimetype so we generate a label for SMS case
-            mimeType = Phone.CONTENT_ITEM_TYPE;
-            colType = cursor.getColumnIndex(Phone.TYPE);
-            colLabel = cursor.getColumnIndex(Phone.LABEL);
-        } else if (Email.CONTENT_ITEM_TYPE.equals(mimeType)) {
-            colType = cursor.getColumnIndex(Email.TYPE);
-            colLabel = cursor.getColumnIndex(Email.LABEL);
-        } else if (StructuredPostal.CONTENT_ITEM_TYPE.equals(mimeType)) {
-            colType = cursor.getColumnIndex(StructuredPostal.TYPE);
-            colLabel = cursor.getColumnIndex(StructuredPostal.LABEL);
-        } else if (Organization.CONTENT_ITEM_TYPE.equals(mimeType)) {
-            colType = cursor.getColumnIndex(Organization.TYPE);
-            colLabel = cursor.getColumnIndex(Organization.LABEL);
-        } else {
-            return null;
-        }
-
-        final int type = cursor.getInt(colType);
-        final CharSequence label = cursor.getString(colLabel);
-
-        return getDisplayLabel(context, mimeType, type, label);
-    }
-
-    public static final CharSequence getDisplayLabel(Context context, String mimetype, int type,
-            CharSequence label) {
-        CharSequence display = "";
-        final int customType;
-        final int defaultType;
-        final int arrayResId;
-
-        if (Phone.CONTENT_ITEM_TYPE.equals(mimetype)) {
-            defaultType = Phone.TYPE_HOME;
-            customType = Phone.TYPE_CUSTOM;
-            arrayResId = com.android.internal.R.array.phoneTypes;
-        } else if (Email.CONTENT_ITEM_TYPE.equals(mimetype)) {
-            defaultType = Email.TYPE_HOME;
-            customType = Email.TYPE_CUSTOM;
-            arrayResId = com.android.internal.R.array.emailAddressTypes;
-        } else if (StructuredPostal.CONTENT_ITEM_TYPE.equals(mimetype)) {
-            defaultType = StructuredPostal.TYPE_HOME;
-            customType = StructuredPostal.TYPE_CUSTOM;
-            arrayResId = com.android.internal.R.array.postalAddressTypes;
-        } else if (Organization.CONTENT_ITEM_TYPE.equals(mimetype)) {
-            defaultType = Organization.TYPE_WORK;
-            customType = Organization.TYPE_CUSTOM;
-            arrayResId = com.android.internal.R.array.organizationTypes;
-        } else {
-            // Can't return display label for given mimetype.
-            return display;
-        }
-
-        if (type != customType) {
-            CharSequence[] labels = context.getResources().getTextArray(arrayResId);
-            try {
-                display = labels[type - 1];
-            } catch (ArrayIndexOutOfBoundsException e) {
-                display = labels[defaultType - 1];
-            }
-        } else {
-            if (!TextUtils.isEmpty(label)) {
-                display = label;
-            }
-        }
-        return display;
-    }
-
-    /**
-     * Opens an InputStream for the person's photo and returns the photo as a Bitmap.
-     * If the person's photo isn't present returns null.
-     *
-     * @param aggCursor the Cursor pointing to the data record containing the photo.
-     * @param bitmapColumnIndex the column index where the photo Uri is stored.
-     * @param options the decoding options, can be set to null
-     * @return the photo Bitmap
-     */
-    public static Bitmap loadContactPhoto(Cursor cursor, int bitmapColumnIndex,
-            BitmapFactory.Options options) {
-        if (cursor == null) {
-            return null;
-        }
-
-        byte[] data = cursor.getBlob(bitmapColumnIndex);
-        return BitmapFactory.decodeByteArray(data, 0, data.length, options);
-    }
-
-    /**
-     * Loads a placeholder photo.
-     *
-     * @param placeholderImageResource the resource to use for the placeholder image
-     * @param context the Context
-     * @param options the decoding options, can be set to null
-     * @return the placeholder Bitmap.
-     */
-    public static Bitmap loadPlaceholderPhoto(int placeholderImageResource, Context context,
-            BitmapFactory.Options options) {
-        if (placeholderImageResource == 0) {
-            return null;
-        }
-        return BitmapFactory.decodeResource(context.getResources(),
-                placeholderImageResource, options);
-    }
-
-    public static Bitmap loadContactPhoto(Context context, long photoId,
-            BitmapFactory.Options options) {
-        Cursor photoCursor = null;
-        Bitmap photoBm = null;
-
-        try {
-            photoCursor = context.getContentResolver().query(
-                    ContentUris.withAppendedId(Data.CONTENT_URI, photoId),
-                    new String[] { Photo.PHOTO },
-                    null, null, null);
-
-            if (photoCursor.moveToFirst() && !photoCursor.isNull(0)) {
-                byte[] photoData = photoCursor.getBlob(0);
-                photoBm = BitmapFactory.decodeByteArray(photoData, 0,
-                        photoData.length, options);
-            }
-        } finally {
-            if (photoCursor != null) {
-                photoCursor.close();
-            }
-        }
-
-        return photoBm;
-    }
+    private static int sThumbnailSize = -1;
 
     // TODO find a proper place for the canonical version of these
     public interface ProviderNames {
@@ -237,193 +94,6 @@ public class ContactsUtils {
     }
 
     /**
-     * Build {@link Intent} to launch an action for the given {@link Im} or
-     * {@link Email} row. Returns null when missing protocol or data.
-     */
-    public static Intent buildImIntent(ContentValues values) {
-        final boolean isEmail = Email.CONTENT_ITEM_TYPE.equals(values.getAsString(Data.MIMETYPE));
-
-        if (!isEmail && !isProtocolValid(values)) {
-            return null;
-        }
-
-        final int protocol = isEmail ? Im.PROTOCOL_GOOGLE_TALK : values.getAsInteger(Im.PROTOCOL);
-
-        String host = values.getAsString(Im.CUSTOM_PROTOCOL);
-        String data = values.getAsString(isEmail ? Email.DATA : Im.DATA);
-        if (protocol != Im.PROTOCOL_CUSTOM) {
-            // Try bringing in a well-known host for specific protocols
-            host = ContactsUtils.lookupProviderNameFromId(protocol);
-        }
-
-        if (!TextUtils.isEmpty(host) && !TextUtils.isEmpty(data)) {
-            final String authority = host.toLowerCase();
-            final Uri imUri = new Uri.Builder().scheme(Constants.SCHEME_IMTO).authority(
-                    authority).appendPath(data).build();
-            return new Intent(Intent.ACTION_SENDTO, imUri);
-        } else {
-            return null;
-        }
-    }
-
-    private static boolean isProtocolValid(ContentValues values) {
-        String protocolString = values.getAsString(Im.PROTOCOL);
-        if (protocolString == null) {
-            return false;
-        }
-        try {
-            Integer.valueOf(protocolString);
-        } catch (NumberFormatException e) {
-            return false;
-        }
-        return true;
-    }
-
-    public static long queryForContactId(ContentResolver cr, long rawContactId) {
-        Cursor contactIdCursor = null;
-        long contactId = -1;
-        try {
-            contactIdCursor = cr.query(RawContacts.CONTENT_URI,
-                    new String[] {RawContacts.CONTACT_ID},
-                    RawContacts._ID + "=" + rawContactId, null, null);
-            if (contactIdCursor != null && contactIdCursor.moveToFirst()) {
-                contactId = contactIdCursor.getLong(0);
-            }
-        } finally {
-            if (contactIdCursor != null) {
-                contactIdCursor.close();
-            }
-        }
-        return contactId;
-    }
-
-    public static String querySuperPrimaryPhone(ContentResolver cr, long contactId) {
-        Cursor c = null;
-        String phone = null;
-        try {
-            Uri baseUri = ContentUris.withAppendedId(Contacts.CONTENT_URI, contactId);
-            Uri dataUri = Uri.withAppendedPath(baseUri, Contacts.Data.CONTENT_DIRECTORY);
-
-            c = cr.query(dataUri,
-                    new String[] {Phone.NUMBER},
-                    Data.MIMETYPE + "=" + Phone.MIMETYPE +
-                        " AND " + Data.IS_SUPER_PRIMARY + "=1",
-                    null, null);
-            if (c != null && c.moveToFirst()) {
-                // Just return the first one.
-                phone = c.getString(0);
-            }
-        } finally {
-            if (c != null) {
-                c.close();
-            }
-        }
-        return phone;
-    }
-
-    public static long queryForRawContactId(ContentResolver cr, long contactId) {
-        Cursor rawContactIdCursor = null;
-        long rawContactId = -1;
-        try {
-            rawContactIdCursor = cr.query(RawContacts.CONTENT_URI,
-                    new String[] {RawContacts._ID},
-                    RawContacts.CONTACT_ID + "=" + contactId, null, null);
-            if (rawContactIdCursor != null && rawContactIdCursor.moveToFirst()) {
-                // Just return the first one.
-                rawContactId = rawContactIdCursor.getLong(0);
-            }
-        } finally {
-            if (rawContactIdCursor != null) {
-                rawContactIdCursor.close();
-            }
-        }
-        return rawContactId;
-    }
-
-    public static ArrayList<Long> queryForAllRawContactIds(ContentResolver cr, long contactId) {
-        Cursor rawContactIdCursor = null;
-        ArrayList<Long> rawContactIds = new ArrayList<Long>();
-        try {
-            rawContactIdCursor = cr.query(RawContacts.CONTENT_URI,
-                    new String[] {RawContacts._ID},
-                    RawContacts.CONTACT_ID + "=" + contactId, null, null);
-            if (rawContactIdCursor != null) {
-                while (rawContactIdCursor.moveToNext()) {
-                    rawContactIds.add(rawContactIdCursor.getLong(0));
-                }
-            }
-        } finally {
-            if (rawContactIdCursor != null) {
-                rawContactIdCursor.close();
-            }
-        }
-        return rawContactIds;
-    }
-
-
-    /**
-     * Utility for creating a standard tab indicator view.
-     *
-     * @param parent The parent ViewGroup to attach the new view to.
-     * @param label The label to display in the tab indicator. If null, not label will be displayed.
-     * @param icon The icon to display. If null, no icon will be displayed.
-     * @return The tab indicator View.
-     */
-    public static View createTabIndicatorView(ViewGroup parent, CharSequence label, Drawable icon) {
-        final LayoutInflater inflater = (LayoutInflater)parent.getContext().getSystemService(
-                Context.LAYOUT_INFLATER_SERVICE);
-        final View tabIndicator = inflater.inflate(R.layout.tab_indicator, parent, false);
-        tabIndicator.getBackground().setDither(true);
-
-        final TextView tv = (TextView) tabIndicator.findViewById(R.id.tab_title);
-        tv.setText(label);
-
-        final ImageView iconView = (ImageView) tabIndicator.findViewById(R.id.tab_icon);
-        iconView.setImageDrawable(icon);
-
-        return tabIndicator;
-    }
-
-    /**
-     * Utility for creating a standard tab indicator view.
-     *
-     * @param parent The parent ViewGroup to attach the new view to.
-     * @param source The {@link ContactsSource} to build the tab view from.
-     * @return The tab indicator View.
-     */
-    public static View createTabIndicatorView(ViewGroup parent, ContactsSource source) {
-        Drawable icon = null;
-        if (source != null) {
-            icon = source.getDisplayIcon(parent.getContext());
-        }
-        return createTabIndicatorView(parent, null, icon);
-    }
-
-    /**
-     * Kick off an intent to initiate a call.
-     *
-     * @param phoneNumber must not be null.
-     * @throws NullPointerException when the given argument is null.
-     */
-    public static void initiateCall(Context context, CharSequence phoneNumber) {
-        Intent intent = new Intent(Intent.ACTION_CALL_PRIVILEGED,
-                Uri.fromParts("tel", phoneNumber.toString(), null));
-        context.startActivity(intent);
-    }
-
-    /**
-     * Kick off an intent to initiate an Sms/Mms message.
-     *
-     * @param phoneNumber must not be null.
-     * @throws NullPointerException when the given argument is null.
-     */
-    public static void initiateSms(Context context, CharSequence phoneNumber) {
-        Intent intent = new Intent(Intent.ACTION_SENDTO,
-                Uri.fromParts("sms", phoneNumber.toString(), null));
-        context.startActivity(intent);
-    }
-
-    /**
      * Test if the given {@link CharSequence} contains any graphic characters,
      * first checking {@link TextUtils#isEmpty(CharSequence)} to handle null.
      */
@@ -434,6 +104,7 @@ public class ContactsUtils {
     /**
      * Returns true if two objects are considered equal.  Two null references are equal here.
      */
+    @NeededForTesting
     public static boolean areObjectsEqual(Object a, Object b) {
         return a == b || (a != null && a.equals(b));
     }
@@ -443,38 +114,55 @@ public class ContactsUtils {
      * considered equal for collapsing in the GUI. For caller-id, use
      * {@link PhoneNumberUtils#compare(Context, String, String)} instead
      */
-    public static final boolean shouldCollapse(Context context, CharSequence mimetype1,
-            CharSequence data1, CharSequence mimetype2, CharSequence data2) {
-        if (TextUtils.equals(Phone.CONTENT_ITEM_TYPE, mimetype1)
-                && TextUtils.equals(Phone.CONTENT_ITEM_TYPE, mimetype2)) {
-            if (data1 == data2) {
-                return true;
-            }
-            if (data1 == null || data2 == null) {
-                return false;
-            }
+    public static final boolean shouldCollapse(CharSequence mimetype1, CharSequence data1,
+            CharSequence mimetype2, CharSequence data2) {
+        // different mimetypes? don't collapse
+        if (!TextUtils.equals(mimetype1, mimetype2)) return false;
 
-            // If the number contains semicolons, PhoneNumberUtils.compare
-            // only checks the substring before that (which is fine for caller-id usually)
-            // but not for collapsing numbers. so we check each segment indidually to be more strict
-            // TODO: This should be replaced once we have a more robust phonenumber-library
-            String[] dataParts1 = data1.toString().split(WAIT_SYMBOL_AS_STRING);
-            String[] dataParts2 = data2.toString().split(WAIT_SYMBOL_AS_STRING);
-            if (dataParts1.length != dataParts2.length) {
-                return false;
-            }
-            for (int i = 0; i < dataParts1.length; i++) {
-                if (!PhoneNumberUtils.compare(context, dataParts1[i], dataParts2[i])) {
-                    return false;
-                }
-            }
+        // exact same string? good, bail out early
+        if (TextUtils.equals(data1, data2)) return true;
 
-            return true;
-        } else {
-            if (mimetype1 == mimetype2 && data1 == data2) {
-                return true;
+        // so if either is null, these two must be different
+        if (data1 == null || data2 == null) return false;
+
+        // if this is not about phone numbers, we know this is not a match (of course, some
+        // mimetypes could have more sophisticated matching is the future, e.g. addresses)
+        if (!TextUtils.equals(Phone.CONTENT_ITEM_TYPE, mimetype1)) return false;
+
+        return shouldCollapsePhoneNumbers(data1.toString(), data2.toString());
+    }
+
+    private static final boolean shouldCollapsePhoneNumbers(
+            String number1WithLetters, String number2WithLetters) {
+        final String number1 = PhoneNumberUtils.convertKeypadLettersToDigits(number1WithLetters);
+        final String number2 = PhoneNumberUtils.convertKeypadLettersToDigits(number2WithLetters);
+
+        int index1 = 0;
+        int index2 = 0;
+        for (;;) {
+            // Skip formatting characters.
+            while (index1 < number1.length() &&
+                    !PhoneNumberUtils.isNonSeparator(number1.charAt(index1))) {
+                index1++;
             }
-            return TextUtils.equals(mimetype1, mimetype2) && TextUtils.equals(data1, data2);
+            while (index2 < number2.length() &&
+                    !PhoneNumberUtils.isNonSeparator(number2.charAt(index2))) {
+                index2++;
+            }
+            // If both have finished, match.  If only one has finished, not match.
+            final boolean number1End = (index1 == number1.length());
+            final boolean number2End = (index2 == number2.length());
+            if (number1End) {
+                return number2End;
+            }
+            if (number2End) return false;
+
+            // If the non-formatting characters are different, not match.
+            if (number1.charAt(index1) != number2.charAt(index2)) return false;
+
+            // Go to the next characters.
+            index1++;
+            index2++;
         }
     }
 
@@ -489,5 +177,164 @@ public class ContactsUtils {
             return false;
         }
         return TextUtils.equals(a.getAction(), b.getAction());
+    }
+
+    /**
+     * @return The ISO 3166-1 two letters country code of the country the user
+     *         is in.
+     */
+    public static final String getCurrentCountryIso(Context context) {
+        CountryDetector detector =
+                (CountryDetector) context.getSystemService(Context.COUNTRY_DETECTOR);
+        return detector.detectCountry().getCountryIso();
+    }
+
+    public static boolean areContactWritableAccountsAvailable(Context context) {
+        final List<AccountWithDataSet> accounts =
+                AccountTypeManager.getInstance(context).getAccounts(true /* writeable */);
+        return !accounts.isEmpty();
+    }
+
+    public static boolean areGroupWritableAccountsAvailable(Context context) {
+        final List<AccountWithDataSet> accounts =
+                AccountTypeManager.getInstance(context).getGroupWritableAccounts();
+        return !accounts.isEmpty();
+    }
+
+    /**
+     * Returns the intent to launch for the given invitable account type and contact lookup URI.
+     * This will return null if the account type is not invitable (i.e. there is no
+     * {@link AccountType#getInviteContactActivityClassName()} or
+     * {@link AccountType#syncAdapterPackageName}).
+     */
+    public static Intent getInvitableIntent(AccountType accountType, Uri lookupUri) {
+        String syncAdapterPackageName = accountType.syncAdapterPackageName;
+        String className = accountType.getInviteContactActivityClassName();
+        if (TextUtils.isEmpty(syncAdapterPackageName) || TextUtils.isEmpty(className)) {
+            return null;
+        }
+        Intent intent = new Intent();
+        intent.setClassName(syncAdapterPackageName, className);
+
+        intent.setAction(ContactsContract.Intents.INVITE_CONTACT);
+
+        // Data is the lookup URI.
+        intent.setData(lookupUri);
+        return intent;
+    }
+
+    /**
+     * Return Uri with an appropriate scheme, accepting Voicemail, SIP, and usual phone call
+     * numbers.
+     */
+    public static Uri getCallUri(String number) {
+        if (PhoneNumberUtils.isUriNumber(number)) {
+             return Uri.fromParts(Constants.SCHEME_SIP, number, null);
+        }
+        return Uri.fromParts(Constants.SCHEME_TEL, number, null);
+     }
+
+    /**
+     * Return an Intent for making a phone call. Scheme (e.g. tel, sip) will be determined
+     * automatically.
+     */
+    public static Intent getCallIntent(String number) {
+        return getCallIntent(number, null);
+    }
+
+    /**
+     * Return an Intent for making a phone call. A given Uri will be used as is (without any
+     * sanity check).
+     */
+    public static Intent getCallIntent(Uri uri) {
+        return getCallIntent(uri, null);
+    }
+
+    /**
+     * A variant of {@link #getCallIntent(String)} but also accept a call origin. For more
+     * information about call origin, see comments in Phone package (PhoneApp).
+     */
+    public static Intent getCallIntent(String number, String callOrigin) {
+        return getCallIntent(getCallUri(number), callOrigin);
+    }
+
+    /**
+     * A variant of {@link #getCallIntent(Uri)} but also accept a call origin. For more
+     * information about call origin, see comments in Phone package (PhoneApp).
+     */
+    public static Intent getCallIntent(Uri uri, String callOrigin) {
+        final Intent intent = new Intent(Intent.ACTION_CALL_PRIVILEGED, uri);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (callOrigin != null) {
+            intent.putExtra(DialtactsActivity.EXTRA_CALL_ORIGIN, callOrigin);
+        }
+        return intent;
+    }
+
+    /**
+     * Return an Intent for launching voicemail screen.
+     */
+    public static Intent getVoicemailIntent() {
+        final Intent intent = new Intent(Intent.ACTION_CALL_PRIVILEGED,
+                Uri.fromParts("voicemail", "", null));
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        return intent;
+    }
+
+    /**
+     * Returns a header view based on the R.layout.list_separator, where the
+     * containing {@link TextView} is set using the given textResourceId.
+     */
+    public static View createHeaderView(Context context, int textResourceId) {
+        View view = View.inflate(context, R.layout.list_separator, null);
+        TextView textView = (TextView) view.findViewById(R.id.title);
+        textView.setText(context.getString(textResourceId));
+        return view;
+    }
+
+    /**
+     * Returns the {@link Rect} with left, top, right, and bottom coordinates
+     * that are equivalent to the given {@link View}'s bounds. This is equivalent to how the
+     * target {@link Rect} is calculated in {@link QuickContact#showQuickContact}.
+     */
+    public static Rect getTargetRectFromView(Context context, View view) {
+        final float appScale = context.getResources().getCompatibilityInfo().applicationScale;
+        final int[] pos = new int[2];
+        view.getLocationOnScreen(pos);
+
+        final Rect rect = new Rect();
+        rect.left = (int) (pos[0] * appScale + 0.5f);
+        rect.top = (int) (pos[1] * appScale + 0.5f);
+        rect.right = (int) ((pos[0] + view.getWidth()) * appScale + 0.5f);
+        rect.bottom = (int) ((pos[1] + view.getHeight()) * appScale + 0.5f);
+        return rect;
+    }
+
+    /**
+     * Returns the size (width and height) of thumbnail pictures as configured in the provider. This
+     * can safely be called from the UI thread, as the provider can serve this without performing
+     * a database access
+     */
+    public static int getThumbnailSize(Context context) {
+        if (sThumbnailSize == -1) {
+            final Cursor c = context.getContentResolver().query(
+                    DisplayPhoto.CONTENT_MAX_DIMENSIONS_URI,
+                    new String[] { DisplayPhoto.THUMBNAIL_MAX_DIM }, null, null, null);
+            try {
+                c.moveToFirst();
+                sThumbnailSize = c.getInt(0);
+            } finally {
+                c.close();
+            }
+        }
+        return sThumbnailSize;
+    }
+
+    /**
+     * @return if the context is in landscape orientation.
+     */
+    public static boolean isLandscape(Context context) {
+        return context.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
     }
 }
